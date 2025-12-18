@@ -35,12 +35,15 @@ pipeline {
             steps {
                 echo '========== Analyse de la qualité du code avec SonarQube =========='
                 withSonarQubeEnv('SonarQube') {
-                    sh '''
-                        mvn sonar:sonar \
-                        -Dsonar.projectKey=tp-projet-2025 \
-                        -Dsonar.projectName="TP Projet 2025" \
-                        -Dsonar.host.url=${SONAR_HOST_URL}
-                    '''
+                    withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
+                        sh '''
+                            mvn sonar:sonar \
+                            -Dsonar.projectKey=tp-projet-2025 \
+                            -Dsonar.projectName="TP Projet 2025" \
+                            -Dsonar.host.url=${SONAR_HOST_URL} \
+                            -Dsonar.token=${SONAR_TOKEN}
+                        '''
+                    }
                 }
             }
         }
