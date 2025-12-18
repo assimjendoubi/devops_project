@@ -5,14 +5,10 @@ pipeline {
         maven 'Maven'
     }
     
-    environment {
-        SONAR_HOST_URL = 'http://192.168.33.10:9000'
-    }
-    
     stages {
         stage('📥 Checkout') {
             steps {
-                echo '========== Récupération du code source depuis Git =========='
+                echo '========== Récupération du code source =========='
                 checkout scm
             }
         }
@@ -33,24 +29,22 @@ pipeline {
         
         stage('🔍 SonarQube Analysis') {
             steps {
-                echo '========== Analyse de la qualité du code avec SonarQube =========='
-                withSonarQubeEnv('SonarQube') {
-                    withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
-                        sh '''
-                            mvn sonar:sonar \
-                            -Dsonar.projectKey=tp-projet-2025 \
-                            -Dsonar.projectName="TP Projet 2025" \
-                            -Dsonar.host.url=${SONAR_HOST_URL} \
-                            -Dsonar.token=${SONAR_TOKEN}
-                        '''
-                    }
+                echo '========== Analyse de la qualité du code =========='
+                withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
+                    sh '''
+                        mvn sonar:sonar \
+                        -Dsonar.projectKey=tp-projet-2025 \
+                        -Dsonar.projectName="TP Projet 2025" \
+                        -Dsonar.host.url=http://192.168.33.10:9000 \
+                        -Dsonar.token=${SONAR_TOKEN}
+                    '''
                 }
             }
         }
         
         stage('📦 Package') {
             steps {
-                echo '========== Génération du fichier JAR =========='
+                echo '========== Génération du JAR =========='
                 sh 'mvn package -DskipTests'
             }
         }
@@ -59,12 +53,14 @@ pipeline {
     post {
         success {
             echo '✅ ========== Pipeline CI exécuté avec succès! =========='
-            archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+            // Archiver les artefacts AVANT le nettoyage
+            archiveArtifacts artifacts: 'target/*.jar', fingerprint: true, allowEmptyArchive: true
         }
         failure {
             echo '❌ ========== Le pipeline a échoué =========='
         }
-        always {
+        cleanup {
+            // Nettoyer APRÈS l'archivage
             echo '🧹 ========== Nettoyage de l\'espace de travail =========='
             cleanWs()
         }
