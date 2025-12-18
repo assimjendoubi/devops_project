@@ -10,7 +10,7 @@ pipeline {
         DOCKER_TAG = "${BUILD_NUMBER}"
         DOCKERHUB_CREDENTIALS = 'dockerhub-credentials'
         CONTAINER_NAME = "spring-app-container"
-        APP_PORT = "8080"
+        APP_PORT = "8081"  // Changé de 8080 à 8081
     }
 
     stages {
@@ -87,8 +87,13 @@ pipeline {
             steps {
                 echo '========== Arrêt et suppression de l\'ancien conteneur =========='
                 sh '''
-                    docker stop ${CONTAINER_NAME} || true
-                    docker rm ${CONTAINER_NAME} || true
+                    # Supprimer tous les conteneurs avec ce nom (running ou stopped)
+                    docker rm -f ${CONTAINER_NAME} 2>/dev/null || true
+
+                    # Attendre un peu pour libérer le port
+                    sleep 2
+
+                    echo "✅ Nettoyage terminé"
                 '''
             }
         }
@@ -97,11 +102,22 @@ pipeline {
             steps {
                 echo '========== Déploiement du conteneur Docker =========='
                 sh '''
+                    # Lancer le nouveau conteneur
                     docker run -d \
                         --name ${CONTAINER_NAME} \
                         -p ${APP_PORT}:8080 \
                         --restart unless-stopped \
                         ${DOCKER_IMAGE}:latest
+
+                    # Vérifier que le conteneur est bien démarré
+                    sleep 5
+                    if docker ps | grep -q ${CONTAINER_NAME}; then
+                        echo "✅ Conteneur démarré avec succès"
+                    else
+                        echo "❌ Erreur: le conteneur n'a pas démarré"
+                        docker logs ${CONTAINER_NAME}
+                        exit 1
+                    fi
                 '''
             }
         }
